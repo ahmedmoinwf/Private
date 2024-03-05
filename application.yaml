@@ -1,0 +1,12 @@
+spring:
+  security:
+    oauth2:
+      client:
+        provider:
+          doccenter-webapp:
+            token-uri: https://apiidp-innovation.wellsfargo.net/oauth/token
+        registration:
+          doccenter-webapp:
+            client-id: tYNjqYuAES64gjX3ZTalFweLp38m60PD
+            client-secret: sBkx1ikOA8AftHJz
+            authorization-grant-type: client_credentials
