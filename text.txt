@@ -1,27 +1,38 @@
-@Test
-    void givenServiceUrl_whenInvokeExternalService_thenReturnResponse() {
-        String serviceUrl = "/api/external";
+@ExtendWith(MockitoExtension.class)
+public class ExternalServiceConfigTest {
+
+    @Mock
+    private WebClient webClientMock;
+
+    @InjectMocks
+    private ExternalServiceConfig externalServiceConfig;
+
+    @Test
+    public void testInvokeExternalService() {
+        // Arrange
+        String serviceUrl = "/api/external-service";
         String key = "param";
         String value = "value";
-        String expectedResponse = "Success";
+        Consumer<HttpHeaders> serviceSpecificRequestHeaders = headers -> headers.set("Authorization", "Bearer token");
 
-        // Mock the lambda expression for the uri method
-        Function<UriBuilder, URI> uriFunction = mock(Function.class);
-        when(uriFunction.apply(any(UriBuilder.class)))
-                .thenReturn(UriBuilder.fromUri("/api/external")
-                        .queryParam(key, value)
-                        .build());
+        WebClient.RequestHeadersUriSpec<?> requestHeadersUriSpecMock = mock(WebClient.RequestHeadersUriSpec.class);
+        WebClient.RequestHeadersSpec<?> requestHeadersSpecMock = mock(WebClient.RequestHeadersSpec.class);
+        WebClient.ResponseSpec responseSpecMock = mock(WebClient.ResponseSpec.class);
+        Mono<String> responseBodyMono = Mono.just("Response body");
 
-        // Mock the WebClient behavior
         when(webClientMock.get()).thenReturn(requestHeadersUriSpecMock);
-        when(requestHeadersUriSpecMock.uri(uriFunction)).thenReturn(requestHeadersSpecMock);
+        when(requestHeadersUriSpecMock.uri(any(Function.class))).thenReturn(requestHeadersSpecMock);
         when(requestHeadersSpecMock.headers(any(Consumer.class))).thenReturn(requestHeadersSpecMock);
         when(requestHeadersSpecMock.retrieve()).thenReturn(responseSpecMock);
-        when(responseSpecMock.bodyToMono(String.class)).thenReturn(Mono.just(expectedResponse));
+        when(responseSpecMock.onStatus(any(Predicate.class), any(Function.class))).thenReturn(responseSpecMock);
+        when(responseSpecMock.bodyToMono(String.class)).thenReturn(responseBodyMono);
 
-        // Call the invokeExternalService method and verify the response
-        Mono<String> result = externalServiceConfig.invokeExternalService(serviceUrl, key, value, headers -> {});
+        // Act
+        Mono<String> result = externalServiceConfig.invokeExternalService(serviceUrl, key, value, serviceSpecificRequestHeaders);
+
+        // Assert
         StepVerifier.create(result)
-                .expectNext(expectedResponse)
-                .verifyComplete();
+                    .expectNext("Response body")
+                    .verifyComplete();
     }
+}
