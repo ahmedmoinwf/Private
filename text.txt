@@ -1,63 +1,27 @@
-import com.wellsfargo.cloud.tls.CloudKeystoreService;
-import com.wellsfargo.cloud.tls.keystore.CachedKeyStore;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.HttpHeaders;
-import org.springframework.web.reactive.function.client.WebClient;
+@Test
+    void givenServiceUrl_whenInvokeExternalService_thenReturnResponse() {
+        String serviceUrl = "/api/external";
+        String key = "param";
+        String value = "value";
+        String expectedResponse = "Success";
 
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
-import java.security.UnrecoverableKeyException;
-import java.time.Instant;
-import java.util.UUID;
+        // Mock the lambda expression for the uri method
+        Function<UriBuilder, URI> uriFunction = mock(Function.class);
+        when(uriFunction.apply(any(UriBuilder.class)))
+                .thenReturn(UriBuilder.fromUri("/api/external")
+                        .queryParam(key, value)
+                        .build());
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.mockito.Mockito.when;
+        // Mock the WebClient behavior
+        when(webClientMock.get()).thenReturn(requestHeadersUriSpecMock);
+        when(requestHeadersUriSpecMock.uri(uriFunction)).thenReturn(requestHeadersSpecMock);
+        when(requestHeadersSpecMock.headers(any(Consumer.class))).thenReturn(requestHeadersSpecMock);
+        when(requestHeadersSpecMock.retrieve()).thenReturn(responseSpecMock);
+        when(responseSpecMock.bodyToMono(String.class)).thenReturn(Mono.just(expectedResponse));
 
-@ExtendWith(MockitoExtension.class)
-class WebClientConfigurationTest {
-
-    @Mock
-    private CloudKeystoreService cloudKeystoreServiceMock;
-
-    @InjectMocks
-    private WebClientConfiguration webClientConfiguration;
-
-    private CachedKeyStore cachedKeyStoreMock;
-
- @BeforeEach
-    void setUp() {
-        try {
-            cachedKeyStoreMock = mock(CachedKeyStore.class);
-            when(cachedKeyStoreMock.keystore()).thenReturn(null);
-            when(cachedKeyStoreMock.getPassword()).thenReturn("password".toCharArray());
-            when(cloudKeystoreServiceMock.cache().get("mykeystore")).thenReturn(cachedKeyStoreMock);
-        } catch (KeyStoreException | NoSuchAlgorithmException | UnrecoverableKeyException e) {
-            // Handle the exceptions appropriately, e.g., log the error or fail the test
-            e.printStackTrace();
-        }
+        // Call the invokeExternalService method and verify the response
+        Mono<String> result = externalServiceConfig.invokeExternalService(serviceUrl, key, value, headers -> {});
+        StepVerifier.create(result)
+                .expectNext(expectedResponse)
+                .verifyComplete();
     }
-
-    @Test
-    void testGetWebclient() {
-        WebClient webClient = webClientConfiguration.getWebclient();
-        assertNotNull(webClient);
-    }
-
-    @Test
-    void testAddCommonRequestHeaderValues() {
-        Consumer<HttpHeaders> headerConsumer = webClientConfiguration.addCommonRequestHeaderValues();
-        HttpHeaders headers = new HttpHeaders();
-        headerConsumer.accept(headers);
-
-        assertNotNull(headers.get("WF-senderMessageId"));
-        assertNotNull(headers.get("WF-creationTimeStamp"));
-        assertEquals("1WOC", headers.get("WF-senderApplicationId").get(0));
-        assertEquals("localhost", headers.get("WF-senderHostName").get(0));
-    }
-}
