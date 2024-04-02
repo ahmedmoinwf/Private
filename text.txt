@@ -37,6 +37,11 @@ class ExternalServiceConfigTest {
         String key = "param";
         String value = "value";
         String expectedResponse = "Success Response";
+        CachedKeyStore cachedKeyStore = new CachedKeyStore();
+        cachedKeyStore.setKeystore(Mockito.mock(KeyStore.class));
+        cachedKeyStore.setPassword("password");
+        Mockito.when(cloudKeystoreService.cache()).thenReturn(Mockito.mock(Cache.class));
+        Mockito.when(cloudKeystoreService.cache().get("mykeystore")).thenReturn(cachedKeyStore);
 
         mockWebServer.enqueue(new MockResponse()
                 .setBody(expectedResponse)
