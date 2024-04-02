@@ -1,38 +1,56 @@
-@ExtendWith(MockitoExtension.class)
-public class ExternalServiceConfigTest {
+import okhttp3.mockwebserver.MockResponse;
+import okhttp3.mockwebserver.MockWebServer;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.TestPropertySource;
+import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
 
-    @Mock
-    private WebClient webClientMock;
+import java.io.IOException;
 
-    @InjectMocks
+@SpringBootTest(classes = {WebClientConfiguration.class, ExternalServiceConfig.class})
+@TestPropertySource(properties = "fa.baseUrl=http://localhost:8080")
+class ExternalServiceConfigTest {
+
+    private static MockWebServer mockWebServer;
+
+    @Autowired
     private ExternalServiceConfig externalServiceConfig;
 
+    @BeforeAll
+    static void setUp() throws IOException {
+        mockWebServer = new MockWebServer();
+        mockWebServer.start(8080);
+    }
+
+    @AfterAll
+    static void tearDown() throws IOException {
+        mockWebServer.shutdown();
+    }
+
     @Test
-    public void testInvokeExternalService() {
-        // Arrange
-        String serviceUrl = "/api/external-service";
+    void testInvokeExternalService_SuccessResponse() {
+        String serviceUrl = "/service";
         String key = "param";
         String value = "value";
-        Consumer<HttpHeaders> serviceSpecificRequestHeaders = headers -> headers.set("Authorization", "Bearer token");
+        String expectedResponse = "Success Response";
 
-        WebClient.RequestHeadersUriSpec<?> requestHeadersUriSpecMock = mock(WebClient.RequestHeadersUriSpec.class);
-        WebClient.RequestHeadersSpec<?> requestHeadersSpecMock = mock(WebClient.RequestHeadersSpec.class);
-        WebClient.ResponseSpec responseSpecMock = mock(WebClient.ResponseSpec.class);
-        Mono<String> responseBodyMono = Mono.just("Response body");
+        mockWebServer.enqueue(new MockResponse()
+                .setBody(expectedResponse)
+                .addHeader("Content-Type", "text/plain"));
 
-        when(webClientMock.get()).thenReturn(requestHeadersUriSpecMock);
-        when(requestHeadersUriSpecMock.uri(any(Function.class))).thenReturn(requestHeadersSpecMock);
-        when(requestHeadersSpecMock.headers(any(Consumer.class))).thenReturn(requestHeadersSpecMock);
-        when(requestHeadersSpecMock.retrieve()).thenReturn(responseSpecMock);
-        when(responseSpecMock.onStatus(any(Predicate.class), any(Function.class))).thenReturn(responseSpecMock);
-        when(responseSpecMock.bodyToMono(String.class)).thenReturn(responseBodyMono);
+        Mono<String> responseMono = externalServiceConfig.invokeExternalService(
+                serviceUrl,
+                key,
+                value,
+                httpHeaders -> {}
+        );
 
-        // Act
-        Mono<String> result = externalServiceConfig.invokeExternalService(serviceUrl, key, value, serviceSpecificRequestHeaders);
-
-        // Assert
-        StepVerifier.create(result)
-                    .expectNext("Response body")
-                    .verifyComplete();
+        StepVerifier.create(responseMono)
+                .expectNext(expectedResponse)
+                .verifyComplete();
     }
 }
