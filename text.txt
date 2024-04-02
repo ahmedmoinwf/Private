@@ -30,16 +30,18 @@ class WebClientConfigurationTest {
 
     private CachedKeyStore cachedKeyStoreMock;
 
-    @BeforeEach
-void setUp() {
-    try {
-        cachedKeyStoreMock = new CachedKeyStore(null, "password".toCharArray());
-        when(cloudKeystoreServiceMock.cache().get("mykeystore")).thenReturn(cachedKeyStoreMock);
-    } catch (KeyStoreException | NoSuchAlgorithmException | UnrecoverableKeyException e) {
-        // Handle the exceptions appropriately, e.g., log the error or fail the test
-        e.printStackTrace();
+ @BeforeEach
+    void setUp() {
+        try {
+            cachedKeyStoreMock = mock(CachedKeyStore.class);
+            when(cachedKeyStoreMock.keystore()).thenReturn(null);
+            when(cachedKeyStoreMock.getPassword()).thenReturn("password".toCharArray());
+            when(cloudKeystoreServiceMock.cache().get("mykeystore")).thenReturn(cachedKeyStoreMock);
+        } catch (KeyStoreException | NoSuchAlgorithmException | UnrecoverableKeyException e) {
+            // Handle the exceptions appropriately, e.g., log the error or fail the test
+            e.printStackTrace();
+        }
     }
-}
 
     @Test
     void testGetWebclient() {
