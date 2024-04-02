@@ -1,106 +1,56 @@
+import com.wellsfargo.cloud.tls.CloudKeystoreService;
+import com.wellsfargo.cloud.tls.keystore.CachedKeyStore;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpHeaders;
 import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.publisher.Mono;
-import reactor.test.StepVerifier;
 
-import java.util.function.Consumer;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.UnrecoverableKeyException;
+import java.time.Instant;
+import java.util.UUID;
 
-import static org.mockito.ArgumentMatchers.any;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-public class ExternalServiceConfigTest {
+class WebClientConfigurationTest {
 
-        @Mock
-        private WebClient webClientMock;
+    @Mock
+    private CloudKeystoreService cloudKeystoreServiceMock;
 
-        @Mock
-        private WebClient.RequestHeadersUriSpec requestHeadersUriSpecMock;
+    @InjectMocks
+    private WebClientConfiguration webClientConfiguration;
 
-        @Mock
-        private WebClient.RequestHeadersSpec requestHeadersSpecMock;
+    private CachedKeyStore cachedKeyStoreMock;
 
-        @Mock
-        private WebClient.ResponseSpec responseSpecMock;
+    @BeforeEach
+    void setUp() throws KeyStoreException, NoSuchAlgorithmException, UnrecoverableKeyException {
+        cachedKeyStoreMock = new CachedKeyStore(null, "password".toCharArray());
+        when(cloudKeystoreServiceMock.cache().get("mykeystore")).thenReturn(cachedKeyStoreMock);
+    }
 
-        @InjectMocks
-        private ExternalServiceConfig externalServiceConfig;
+    @Test
+    void testGetWebclient() {
+        WebClient webClient = webClientConfiguration.getWebclient();
+        assertNotNull(webClient);
+    }
 
-        @Test
-        void givenServiceUrl_whenInvokeExternalService_thenReturnResponse() {
-                String serviceUrl = "/api/external";
-                String key = "param";
-                String value = "value";
-                String expectedResponse = "Success";
+    @Test
+    void testAddCommonRequestHeaderValues() {
+        Consumer<HttpHeaders> headerConsumer = webClientConfiguration.addCommonRequestHeaderValues();
+        HttpHeaders headers = new HttpHeaders();
+        headerConsumer.accept(headers);
 
-                when(webClientMock.get()).thenReturn(requestHeadersUriSpecMock);
-                when(requestHeadersUriSpecMock.uri(any(String.class), any(String.class), any(String.class)))
-                .thenReturn(requestHeadersSpecMock);
-                when(requestHeadersSpecMock.headers(any(Consumer.class))).thenReturn(requestHeadersSpecMock);
-                when(requestHeadersSpecMock.retrieve()).thenReturn(responseSpecMock);
-                when(responseSpecMock.bodyToMono(String.class)).thenReturn(Mono.just(expectedResponse));
-
-                Mono<String> result = externalServiceConfig.invokeExternalService(serviceUrl, key, value, headers -> {});
-
-                StepVerifier.create(result)
-                .expectNext(expectedResponse)
-                .verifyComplete();
-        }
-
-        @Test
-        void givenServiceUrl_whenInvokeExternalService_thenHandleErrors() {
-                String serviceUrl = "/api/external";
-                String key = "param";
-                String value = "value";
-                String errorMessage = "Error occurred";
-
-                // Mock the WebClient behavior for client error
-                when(webClientMock.get()).thenReturn(requestHeadersUriSpecMock);
-                when(requestHeadersUriSpecMock.uri(any(String.class), any(String.class), any(String.class)))
-                .thenReturn(requestHeadersSpecMock);
-                when(requestHeadersSpecMock.headers(any(Consumer.class))).thenReturn(requestHeadersSpecMock);
-                when(requestHeadersSpecMock.retrieve()).thenReturn(responseSpecMock);
-                when(responseSpecMock.bodyToMono(String.class)).thenReturn(Mono.error(new RuntimeException(errorMessage)));
-
-                Mono<String> result = externalServiceConfig.invokeExternalService(serviceUrl, key, value, headers -> {});
-                StepVerifier.create(result)
-                .expectError(DocCenterServiceException.class)
-                .verify();
-
-                // Mock the WebClient behavior for server error
-                when(webClientMock.get()).thenReturn(requestHeadersUriSpecMock);
-                when(requestHeadersUriSpecMock.uri(any(String.class), any(String.class), any(String.class)))
-                .thenReturn(requestHeadersSpecMock);
-                when(requestHeadersSpecMock.headers(any(Consumer.class))).thenReturn(requestHeadersSpecMock);
-                when(requestHeadersSpecMock.retrieve()).thenReturn(responseSpecMock);
-                when(responseSpecMock.bodyToMono(String.class)).thenReturn(Mono.error(new RuntimeException(errorMessage)));
-
-                result = externalServiceConfig.invokeExternalService(serviceUrl, key, value, headers -> {});
-                StepVerifier.create(result)
-                .expectError(DocCenterServiceException.class)
-                .verify();
-        }
-
-        @Test
-        void givenServiceUrl_whenInvokeExternalService_thenHandleTimeout() {
-                String serviceUrl = "/api/external";
-                String key = "param";
-                String value = "value";
-
-                when(webClientMock.get()).thenReturn(requestHeadersUriSpecMock);
-                when(requestHeadersUriSpecMock.uri(any(String.class), any(String.class), any(String.class)))
-                .thenReturn(requestHeadersSpecMock);
-                when(requestHeadersSpecMock.headers(any(Consumer.class))).thenReturn(requestHeadersSpecMock);
-                when(requestHeadersSpecMock.retrieve()).thenReturn(responseSpecMock);
-                when(responseSpecMock.bodyToMono(String.class)).thenReturn(Mono.never());
-
-                Mono<String> result = externalServiceConfig.invokeExternalService(serviceUrl, key, value, headers -> {});
-                StepVerifier.create(result)
-                .expectError(DocCenterServiceException.class)
-                .verify();
-        }
+        assertNotNull(headers.get("WF-senderMessageId"));
+        assertNotNull(headers.get("WF-creationTimeStamp"));
+        assertEquals("1WOC", headers.get("WF-senderApplicationId").get(0));
+        assertEquals("localhost", headers.get("WF-senderHostName").get(0));
+    }
 }
