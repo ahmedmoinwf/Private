@@ -1,65 +1,13 @@
-<dependency> <groupId>org.mockito</groupId> <artifactId>mockito-inline</artifactId> <version>4.6.1</version> <scope>test</scope> </dependency>
-
-@InjectMocks
-private WebClientConfiguration webClientConfiguration;
-
-@Mock
-private CloseableHttpAsyncClient httpClient;
-
-@Mock
-private Consumer<HttpHeaders> headerConsumer;
-
-@BeforeEach
-void setUp() {
-    ReflectionTestUtils.setField(webClientConfiguration, "faBaseUrl", "https://example.com");
-}
+@Test
 void getWebClient_shouldReturnWebClientInstance() throws Exception {
-// Arrange
-	WebClient expectedWebClient = WebClient.builder().build();
-	ReflectionTestUtils.setField(webClientConfiguration, "faBaseUrl", "https://example.com");
-	when(ReflectionTestUtils.invokeMethod(webClientConfiguration, "buildWebClient", "https://example.com")).thenReturn(expectedWebClient);
-	// Act
-	WebClient actualWebClient = webClientConfiguration.getWebclient();
-
-// Assert
-	assertSame(expectedWebClient, actualWebClient);
-}
-
-@Test
-void buildWebClient_shouldReturnWebClientInstance() throws Exception {
     // Arrange
-    String baseUrl = "https://example.com";
-    when(ReflectionTestUtils.invokeMethod(webClientConfiguration, "buildCloseableHttpAsyncClient"))
-            .thenReturn(httpClient);
-    when(ReflectionTestUtils.invokeMethod(webClientConfiguration, "addCommonRequestHeaderValues"))
-            .thenReturn(headerConsumer);
+    WebClient expectedWebClient = WebClient.builder().build();
+    when(ReflectionTestUtils.invokeMethod(webClientConfiguration, "buildWebClient", "https://example.com"))
+            .thenReturn(expectedWebClient);
 
     // Act
-    WebClient webClient = (WebClient) ReflectionTestUtils.invokeMethod(
-            webClientConfiguration, "buildWebClient", baseUrl);
+    WebClient actualWebClient = webClientConfiguration.getWebclient();
 
     // Assert
-    assertNotNull(webClient);
-    assertEquals(baseUrl, webClient.getUriSpecification().getBaseUrl());
-
-    verify(ReflectionTestUtils, times(1)).invokeMethod(webClientConfiguration, "buildCloseableHttpAsyncClient");
-    verify(ReflectionTestUtils, times(1)).invokeMethod(webClientConfiguration, "addCommonRequestHeaderValues");
-}
-
-@Test
-void buildWebClient_shouldLogErrorWhenExceptionOccurs() throws Exception {
-    // Arrange
-    String baseUrl = "https://example.com";
-    when(ReflectionTestUtils.invokeMethod(webClientConfiguration, "buildCloseableHttpAsyncClient"))
-            .thenThrow(new RuntimeException("Test Exception"));
-
-    // Act
-    WebClient webClient = (WebClient) ReflectionTestUtils.invokeMethod(
-            webClientConfiguration, "buildWebClient", baseUrl);
-
-    // Assert
-    assertNull(webClient);
-
-    verify(ReflectionTestUtils, times(1)).invokeMethod(webClientConfiguration, "buildCloseableHttpAsyncClient");
-    verify(ReflectionTestUtils, never()).invokeMethod(webClientConfiguration, "addCommonRequestHeaderValues");
+    assertSame(expectedWebClient, actualWebClient);
 }
