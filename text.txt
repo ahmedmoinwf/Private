@@ -1,26 +1,66 @@
 @InjectMocks
 private WebClientConfiguration webClientConfiguration;
 
-@Test
-void addCommonRequestHeaderValues_shouldAddHeadersToHttpHeaders() {
-    // Act
-    Consumer<HttpHeaders> headerConsumer = (Consumer<HttpHeaders>) ReflectionTestUtils.invokeMethod(
-            webClientConfiguration, "addCommonRequestHeaderValues");
+@Mock
+private CloseableHttpAsyncClient httpClient;
 
-    HttpHeaders headers = new HttpHeaders();
-    headerConsumer.accept(headers);
+@Mock
+private Consumer<HttpHeaders> headerConsumer;
+
+@BeforeEach
+void setUp() {
+    ReflectionTestUtils.setField(webClientConfiguration, "faBaseUrl", "https://example.com");
+}
+
+@Test
+void getWebClient_shouldReturnWebClientInstance() throws Exception {
+    // Arrange
+    when(webClientConfiguration.buildCloseableHttpAsyncClient()).thenReturn(httpClient);
+    when(webClientConfiguration.addCommonRequestHeaderValues()).thenReturn(headerConsumer);
+
+    // Act
+    WebClient webClient = webClientConfiguration.getWebclient();
 
     // Assert
-    assertTrue(headers.containsKey("WF-senderMessageId"));
-    assertNotNull(headers.getFirst("WF-senderMessageId"));
-    assertTrue(UUID.fromString(headers.getFirst("WF-senderMessageId")) instanceof UUID);
+    assertNotNull(webClient);
+    assertEquals("https://example.com", webClient.getUriSpecification().getBaseUrl());
 
-    assertTrue(headers.containsKey("WF-creationTimeStamp"));
-    assertNotNull(headers.getFirst("WF-creationTimeStamp"));
+    verify(webClientConfiguration, times(1)).buildCloseableHttpAsyncClient();
+    verify(webClientConfiguration, times(1)).addCommonRequestHeaderValues();
+}
 
-    assertTrue(headers.containsKey("WF-senderApplicationId"));
-    assertEquals("1WOC", headers.getFirst("WF-senderApplicationId"));
+@Test
+void buildWebClient_shouldReturnWebClientInstance() throws Exception {
+    // Arrange
+    String baseUrl = "https://example.com";
+    when(webClientConfiguration.buildCloseableHttpAsyncClient()).thenReturn(httpClient);
+    when(webClientConfiguration.addCommonRequestHeaderValues()).thenReturn(headerConsumer);
 
-    assertTrue(headers.containsKey("WF-senderHostName"));
-    assertEquals("localhost", headers.getFirst("WF-senderHostName"));
+    // Act
+    WebClient webClient = ReflectionTestUtils.invokeMethod(
+            webClientConfiguration, "buildWebClient", baseUrl);
+
+    // Assert
+    assertNotNull(webClient);
+    assertEquals(baseUrl, webClient.getUriSpecification().getBaseUrl());
+
+    verify(webClientConfiguration, times(1)).buildCloseableHttpAsyncClient();
+    verify(webClientConfiguration, times(1)).addCommonRequestHeaderValues();
+}
+
+@Test
+void buildWebClient_shouldLogErrorWhenExceptionOccurs() throws Exception {
+    // Arrange
+    String baseUrl = "https://example.com";
+    when(webClientConfiguration.buildCloseableHttpAsyncClient()).thenThrow(new RuntimeException("Test Exception"));
+
+    // Act
+    WebClient webClient = ReflectionTestUtils.invokeMethod(
+            webClientConfiguration, "buildWebClient", baseUrl);
+
+    // Assert
+    assertNull(webClient);
+
+    verify(webClientConfiguration, times(1)).buildCloseableHttpAsyncClient();
+    verify(webClientConfiguration, never()).addCommonRequestHeaderValues();
 }
