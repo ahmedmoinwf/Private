@@ -1,65 +1,21 @@
-import com.wellsfargo.cloud.tls.CachedKeyStore;
-import com.wellsfargo.cloud.tls.CloudKeystoreService;
-import com.wellsfargo.cloud.tls.KeyStoreCache;
-import okhttp3.mockwebserver.MockResponse;
-import okhttp3.mockwebserver.MockWebServer;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
-import org.springframework.test.context.TestPropertySource;
-import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.publisher.Mono;
-import reactor.test.StepVerifier;
+private CachedKeyStore createMockCachedKeyStore() throws Exception {
+    String name = "mykeystore";
+    String password = "password";
 
-import java.io.IOException;
-import java.security.KeyStore;
-import java.util.Base64;
+    // Create a new KeyStore instance
+    KeyStore keyStore = KeyStore.getInstance("JKS");
+    keyStore.load(null, password.toCharArray());
 
-@TestPropertySource(properties = "fa.baseUrl=http://localhost:8081")
-class ExternalServiceConfigTest {
+    // Generate a secret key and store it in the KeyStore
+    SecretKey secretKey = KeyGenerator.getInstance("AES").generateKey();
+    KeyStore.SecretKeyEntry secretKeyEntry = new KeyStore.SecretKeyEntry(secretKey);
+    KeyStore.ProtectionParameter entryPassword = new KeyStore.PasswordProtection(password.toCharArray());
+    keyStore.setEntry("secretKey", secretKeyEntry, entryPassword);
 
-    private static MockWebServer mockWebServer;
-    private ExternalServiceConfig externalServiceConfig;
+    // Convert the KeyStore to a base64-encoded string
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    keyStore.store(baos, password.toCharArray());
+    String base64Keystore = Base64.getEncoder().encodeToString(baos.toByteArray());
 
-    @BeforeAll
-    static void setUp() throws IOException {
-        mockWebServer = new MockWebServer();
-        mockWebServer.start(8081);
-    }
-
-    @AfterAll
-    static void tearDown() throws IOException {
-        mockWebServer.shutdown();
-    }
-
-    @Test
-    void testInvokeExternalService_SuccessResponse() throws Exception {
-        String serviceUrl = "/service";
-        String key = "param";
-        String value = "value";
-        String expectedResponse = "Success Response";
-
-        // Create an instance of ExternalServiceConfig with a mocked WebClient
-        WebClient mockWebClient = WebClient.builder()
-                .baseUrl("http://localhost:8081")
-                .build();
-        externalServiceConfig = new ExternalServiceConfig();
-        externalServiceConfig.setWebClient(mockWebClient);
-
-        mockWebServer.enqueue(new MockResponse()
-                .setBody(expectedResponse)
-                .addHeader("Content-Type", "text/plain"));
-
-        Mono<String> responseMono = externalServiceConfig.invokeExternalService(
-                serviceUrl,
-                key,
-                value,
-                httpHeaders -> {}
-        );
-
-        StepVerifier.create(responseMono)
-                .expectNext(expectedResponse)
-                .verifyComplete();
-    }
+    return new CachedKeyStore(name, password, base64Keystore);
 }
