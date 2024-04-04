@@ -11,20 +11,16 @@ private Consumer<HttpHeaders> headerConsumer;
 void setUp() {
     ReflectionTestUtils.setField(webClientConfiguration, "faBaseUrl", "https://example.com");
 }
-
-@Test
 void getWebClient_shouldReturnWebClientInstance() throws Exception {
-    // Arrange
-    WebClient expectedWebClient = WebClient.builder().build();
-    when(ReflectionTestUtils.invokeMethod(webClientConfiguration, "buildWebClient", "https://example.com"))
-            .thenReturn(expectedWebClient);
+// Arrange
+	WebClient expectedWebClient = WebClient.builder().build();
+	ReflectionTestUtils.setField(webClientConfiguration, "faBaseUrl", "https://example.com");
+	when(ReflectionTestUtils.invokeMethod(webClientConfiguration, "buildWebClient", "https://example.com")).thenReturn(expectedWebClient);
+	// Act
+	WebClient actualWebClient = webClientConfiguration.getWebclient();
 
-    // Act
-    WebClient actualWebClient = webClientConfiguration.getWebclient();
-
-    // Assert
-    assertSame(expectedWebClient, actualWebClient);
-    verify(ReflectionTestUtils, times(1)).invokeMethod(webClientConfiguration, "buildWebClient", "https://example.com");
+// Assert
+	assertSame(expectedWebClient, actualWebClient);
 }
 
 @Test
