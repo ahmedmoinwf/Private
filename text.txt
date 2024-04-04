@@ -1,21 +1,26 @@
-private CachedKeyStore createMockCachedKeyStore() throws Exception {
-    String name = "mykeystore";
-    String password = "password";
+@InjectMocks
+private WebClientConfiguration webClientConfiguration;
 
-    // Create a new KeyStore instance
-    KeyStore keyStore = KeyStore.getInstance("JKS");
-    keyStore.load(null, password.toCharArray());
+@Test
+void addCommonRequestHeaderValues_shouldAddHeadersToHttpHeaders() {
+    // Act
+    Consumer<HttpHeaders> headerConsumer = (Consumer<HttpHeaders>) ReflectionTestUtils.invokeMethod(
+            webClientConfiguration, "addCommonRequestHeaderValues");
 
-    // Generate a secret key and store it in the KeyStore
-    SecretKey secretKey = KeyGenerator.getInstance("AES").generateKey();
-    KeyStore.SecretKeyEntry secretKeyEntry = new KeyStore.SecretKeyEntry(secretKey);
-    KeyStore.ProtectionParameter entryPassword = new KeyStore.PasswordProtection(password.toCharArray());
-    keyStore.setEntry("secretKey", secretKeyEntry, entryPassword);
+    HttpHeaders headers = new HttpHeaders();
+    headerConsumer.accept(headers);
 
-    // Convert the KeyStore to a base64-encoded string
-    ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    keyStore.store(baos, password.toCharArray());
-    String base64Keystore = Base64.getEncoder().encodeToString(baos.toByteArray());
+    // Assert
+    assertTrue(headers.containsKey("WF-senderMessageId"));
+    assertNotNull(headers.getFirst("WF-senderMessageId"));
+    assertTrue(UUID.fromString(headers.getFirst("WF-senderMessageId")) instanceof UUID);
 
-    return new CachedKeyStore(name, password, base64Keystore);
+    assertTrue(headers.containsKey("WF-creationTimeStamp"));
+    assertNotNull(headers.getFirst("WF-creationTimeStamp"));
+
+    assertTrue(headers.containsKey("WF-senderApplicationId"));
+    assertEquals("1WOC", headers.getFirst("WF-senderApplicationId"));
+
+    assertTrue(headers.containsKey("WF-senderHostName"));
+    assertEquals("localhost", headers.getFirst("WF-senderHostName"));
 }
