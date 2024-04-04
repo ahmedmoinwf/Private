@@ -15,52 +15,53 @@ void setUp() {
 @Test
 void getWebClient_shouldReturnWebClientInstance() throws Exception {
     // Arrange
-    when(webClientConfiguration.buildCloseableHttpAsyncClient()).thenReturn(httpClient);
-    when(webClientConfiguration.addCommonRequestHeaderValues()).thenReturn(headerConsumer);
+    WebClient expectedWebClient = WebClient.builder().build();
+    when(ReflectionTestUtils.invokeMethod(webClientConfiguration, "buildWebClient", "https://example.com"))
+            .thenReturn(expectedWebClient);
 
     // Act
-    WebClient webClient = webClientConfiguration.getWebclient();
+    WebClient actualWebClient = webClientConfiguration.getWebclient();
 
     // Assert
-    assertNotNull(webClient);
-    assertEquals("https://example.com", webClient.getUriSpecification().getBaseUrl());
-
-    verify(webClientConfiguration, times(1)).buildCloseableHttpAsyncClient();
-    verify(webClientConfiguration, times(1)).addCommonRequestHeaderValues();
+    assertSame(expectedWebClient, actualWebClient);
+    verify(ReflectionTestUtils, times(1)).invokeMethod(webClientConfiguration, "buildWebClient", "https://example.com");
 }
 
 @Test
 void buildWebClient_shouldReturnWebClientInstance() throws Exception {
     // Arrange
     String baseUrl = "https://example.com";
-    when(webClientConfiguration.buildCloseableHttpAsyncClient()).thenReturn(httpClient);
-    when(webClientConfiguration.addCommonRequestHeaderValues()).thenReturn(headerConsumer);
+    when(ReflectionTestUtils.invokeMethod(webClientConfiguration, "buildCloseableHttpAsyncClient"))
+            .thenReturn(httpClient);
+    when(ReflectionTestUtils.invokeMethod(webClientConfiguration, "addCommonRequestHeaderValues"))
+            .thenReturn(headerConsumer);
 
     // Act
-    WebClient webClient = ReflectionTestUtils.invokeMethod(
+    WebClient webClient = (WebClient) ReflectionTestUtils.invokeMethod(
             webClientConfiguration, "buildWebClient", baseUrl);
 
     // Assert
     assertNotNull(webClient);
     assertEquals(baseUrl, webClient.getUriSpecification().getBaseUrl());
 
-    verify(webClientConfiguration, times(1)).buildCloseableHttpAsyncClient();
-    verify(webClientConfiguration, times(1)).addCommonRequestHeaderValues();
+    verify(ReflectionTestUtils, times(1)).invokeMethod(webClientConfiguration, "buildCloseableHttpAsyncClient");
+    verify(ReflectionTestUtils, times(1)).invokeMethod(webClientConfiguration, "addCommonRequestHeaderValues");
 }
 
 @Test
 void buildWebClient_shouldLogErrorWhenExceptionOccurs() throws Exception {
     // Arrange
     String baseUrl = "https://example.com";
-    when(webClientConfiguration.buildCloseableHttpAsyncClient()).thenThrow(new RuntimeException("Test Exception"));
+    when(ReflectionTestUtils.invokeMethod(webClientConfiguration, "buildCloseableHttpAsyncClient"))
+            .thenThrow(new RuntimeException("Test Exception"));
 
     // Act
-    WebClient webClient = ReflectionTestUtils.invokeMethod(
+    WebClient webClient = (WebClient) ReflectionTestUtils.invokeMethod(
             webClientConfiguration, "buildWebClient", baseUrl);
 
     // Assert
     assertNull(webClient);
 
-    verify(webClientConfiguration, times(1)).buildCloseableHttpAsyncClient();
-    verify(webClientConfiguration, never()).addCommonRequestHeaderValues();
+    verify(ReflectionTestUtils, times(1)).invokeMethod(webClientConfiguration, "buildCloseableHttpAsyncClient");
+    verify(ReflectionTestUtils, never()).invokeMethod(webClientConfiguration, "addCommonRequestHeaderValues");
 }
